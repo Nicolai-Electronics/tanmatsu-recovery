@@ -23,7 +23,7 @@ jobs:
       - name: Deploy with Rsync
         uses: SamKirkland/web-deploy@v1
         with:
-          source-path: './build/'
+          source-path: './website/'
           target-server: ${{ vars.HOST }}
           ssh-port:      ${{ vars.SSH_PORT }}
           remote-user:   ${{ vars.SSH_USER }}
