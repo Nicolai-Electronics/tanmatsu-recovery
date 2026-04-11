@@ -309,7 +309,7 @@ export class Recovery {
                         },
                         {
                             type: "paragraph",
-                            content: "Then you can optionally flash the radio module (ESP32-C6) firmware by selecting the second interface in the list after enabling the radio module using the instructions below."
+                            content: "Then you can optionally flash the radio module (ESP32-C6) firmware by selecting the second interface in the list after enabling the radio module. See the 'Information' page for instructions on how to enable the radio module."
                         }
                     ]
                 }
