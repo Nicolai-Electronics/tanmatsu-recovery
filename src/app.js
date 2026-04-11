@@ -1,6 +1,7 @@
 'use strict';
 
 import { Recovery } from "/pages/recovery.js";
+import { Information } from "/pages/information.js";
 
 function start_app() {
     window.app = new App();
@@ -24,17 +25,17 @@ class App {
                         type: "strong",
                         content: "Tanmatsu cloud"
                     },
-                    "Copyright © Nicolai Electronics 2025 - All rights reserved."
+                    "Copyright © Nicolai Electronics 2026 - All rights reserved."
                 ]
             }
         };
         
         this.renderer.render_loading("Starting application...", "secondary", true);
 
-        /*if (typeof navigator.usb === "undefined") {
+        if (typeof navigator.usb === "undefined") {
             this.show_incompatible();
             return;
-        }*/
+        }
         
         this.navigation_target = "home";
         this.page = null;
@@ -66,7 +67,7 @@ class App {
             content: [
                 {
                     type: "paragraph",
-                    content: "This application is not compatible with your browser. Please use a browser that has support for WebUSB."
+                    content: "This application is only compatible with browsers that support the WebUSB API. Unfortunately Firefox does not support these APIs."
                 },
             ],
         };
@@ -155,6 +156,8 @@ class App {
         }
 
         if (target === "home") {
+            this.page = new Information(this);
+        } else if (target === "recovery") {
             this.page = new Recovery(this);
         } else {
             console.error("Invalid navigation target", target);
@@ -348,9 +351,15 @@ class App {
             user: null,//connection_status,
             items: [
                 {
-                    label: "Recovery",
+                    label: "Information",
                     icon: "home",
                     target: "javascript:app.navigate('home');",
+                    active: (this.page instanceof Information)
+                },
+                {
+                    label: "Recovery",
+                    icon: "download",
+                    target: "javascript:app.navigate('recovery');",
                     active: (this.page instanceof Recovery)
                 },
             ]

@@ -310,41 +310,7 @@ export class Recovery {
                         {
                             type: "paragraph",
                             content: "Then you can optionally flash the radio module (ESP32-C6) firmware by selecting the second interface in the list after enabling the radio module using the instructions below."
-                        },
-                        {
-                            type: "paragraph",
-                            content: "If your Tanmatsu does not show up in the list or refuses to connect first power down the device by holding the power button until the device powers off. Then re-connect it to USB while pressing down the third ('volume down') button on the right side of the device. This will force the application processor into ROM bootloader mode which will always work regardless of the current state of the firmware on the flash chip."
-                        },
-                    ]
-                }
-            },
-            {
-                type: "card",
-                content: {
-                    outline: true,
-                    header: {
-                        color: "orange",
-                        content: [{ type: "title", content: "How to enable the radio module" }],
-                        tools: [
-                        ]
-                    },
-                    content: [
-                        {
-                            type: "paragraph",
-                            content: "If you want to connect to the ESP32-C6 radio module on a Tanmatsu then please note that the radio module has to be enabled by the application running on the ESP32-P4 application processor."
-                        },
-                        {
-                            type: "paragraph",
-                            content: "If you have flashed the launcher firmware then you can force the radio to be enabled and put into bootloader mode by pressing FN + \"orange triangle\" on the keyboard of Tanmatsu while on the home screen of the launcher firmware. The radio LED will turn blue. To start the radio module in application mode press FN + \"yellow square\"."
-                        },
-                        {
-                            type: "paragraph",
-                            content: "When the Meshtastic frontend firmware is running the radio is always enabled in application mode. If you have trouble flashing the radio module please try to re-flash the launcher firmware first and then enable the radio module in bootloader using the key combination above."
-                        },
-                        {
-                            type: "paragraph",
-                            content: "The ESP32-C6 radio module should show up as a second \"USB JTAG/Serial debug unit\" interface. To connect to the radio module select this second interface after clicking the connect button."
-                        },
+                        }
                     ]
                 }
             }
@@ -386,26 +352,53 @@ export class Recovery {
                                 button: ["sm"],
                                 color: "secondary",
                                 label: "Disconnect"
-                            },
-                            {
-                                type: "link",
-                                icon: "link",
-                                target: "javascript:window.app.page.eraseFlash();",
-                                button: ["sm"],
-                                color: "red",
-                                label: "Erase entire flash chip"
-                            },
+                            }
                         ]
                     },
                     content: [
                         {
                             type: "paragraph",
-                            content: "Connected to '" + this.chip + "'"
+                            content: "Connected to " + (this.chip.includes("ESP32-P4") ? "the ESP32-P4 application processor" : this.chip.includes("ESP32-C6") ? "the ESP32-C6 radio module" : "an unknown device (" + this.chip + ")") + "."
+                        },
+                        {
+                            type: "paragraph",
+                            content: "To disconnect from the device and return to the start page of this application press the 'Disconnect' button on the top right. Other options are displayed in the sections below."
+                        },
+                        {
+                            type: "paragraph",
+                            content: "Note that even after disconnecting the device will stay in the bootloader mode. To start the newly installed firmware the device needs to be restarted. To restart the device first disconnect the USB cable, then turn off the device by holding down the power button until it powers off. Then turn it back on by pressing the power button again."
                         },
                     ]
                 }
             },
         ];
+
+    page.push({
+            type: "card",
+            content: {
+                outline: true,
+                header: {
+                    color: "red",
+                    content: [{ type: "title", content: "Flash erase" }],
+                    tools: [
+                        {
+                            type: "link",
+                            icon: "link",
+                            target: "javascript:window.app.page.eraseFlash();",
+                            button: ["sm"],
+                            color: "red",
+                            label: "Erase entire flash chip"
+                        }
+                    ]
+                },
+                content: [
+                    {
+                        type: "paragraph",
+                        content: "Erasing the flash chip is an optional step. By erasing the flash you ensure that your Tanmatsu starts from a blank slate. After erasing the flash you will need to flash the launcher firmware in order to use the device."
+                    }
+                ]
+            }
+        });
 
         if (this.chip.includes("ESP32-P4")) {
             page.push({
@@ -414,30 +407,45 @@ export class Recovery {
                     outline: true,
                     header: {
                         color: "orange",
-                        content: [{ type: "title", content: "Application processor" }],
+                        content: [{ type: "title", content: "Launcher firmware" }],
                         tools: [
-                            {
-                                type: "link",
-                                icon: "link",
-                                target: "javascript:window.app.page.flashFirmware('launcher', false);",
-                                button: ["sm"],
-                                color: "red",
-                                label: "Install launcher (keep filesystem)"
-                            },
                             {
                                 type: "link",
                                 icon: "link",
                                 target: "javascript:window.app.page.flashFirmware('launcher', true);",
                                 button: ["sm"],
                                 color: "orange",
-                                label: "Install launcher"
-                            },
+                                label: "Full install"
+                            }
+                        ]
+                    },
+                    content: [
+                        {
+                            type: "paragraph",
+                            content: "To reinstall the launcher firmware simply press the 'install' button. Note that this will delete all files from the filesystem of your device in order to reinstall the icon files."
+                        },
+                        {
+                            type: "paragraph",
+                            content: ""
+                        },
+                    ]
+                }
+            });
+
+            page.push({
+                type: "card",
+                content: {
+                    outline: true,
+                    header: {
+                        color: "green",
+                        content: [{ type: "title", content: "Meshtastic preview" }],
+                        tools: [
                             {
                                 type: "link",
                                 icon: "link",
                                 target: "javascript:window.app.page.flashFirmware('meshtastic', true);",
                                 button: ["sm"],
-                                color: "green",
+                                color: "secondary",
                                 label: "Install Meshtastic frontend"
                             },
                         ]
@@ -445,11 +453,46 @@ export class Recovery {
                     content: [
                         {
                             type: "paragraph",
-                            content: "You have successfully connected to the application processor (ESP32-P4) of your Tanmatsu device. You can now flash the launcher firmware or the Meshtastic frontend firmware (preview)."
+                            content: "As an alternative to the Tanmatsu launcher you can install the Meshtastic frontend firmware (preview) firmware. Note that you will also need to install Meshtastic to the ESP32-C6 radio module. It is recommended to first flash the radio module to Meshtastic before flashing the frontend firmware. To access the radio after you have flashed the frontend firmware simply restart the device and then connect to the second debug interface."
+                        }
+                    ]
+                }
+            });
+
+            page.push({
+                type: "card",
+                content: {
+                    outline: true,
+                    header: {
+                        color: "secondary",
+                        content: [{ type: "title", content: "Legacy v0.0.12 launcher firmware" }],
+                        tools: [
+                            {
+                                type: "link",
+                                icon: "link",
+                                target: "javascript:window.app.page.flashFirmware('launcher-v0-0-12', false);",
+                                button: ["sm"],
+                                color: "secondary",
+                                label: "Install without FAT filesystem"
+                            },
+                            {
+                                type: "link",
+                                icon: "link",
+                                target: "javascript:window.app.page.flashFirmware('launcher-v0-0-12', true);",
+                                button: ["sm"],
+                                color: "secondary",
+                                label: "Full install"
+                            }
+                        ]
+                    },
+                    content: [
+                        {
+                            type: "paragraph",
+                            content: "To reinstall the legacy v0.0.12 launcher firmware simply press the 'install' button. Note that this will delete all files from the filesystem of your device in order to reinstall the icon files."
                         },
                         {
                             type: "paragraph",
-                            content: "After flashing the device needs to be restarted. To restart the device first disconnect, then turn off the device by holding down the power button until it powers off. Then turn it back on by pressing the power button again."
+                            content: ""
                         },
                     ]
                 }
@@ -463,8 +506,8 @@ export class Recovery {
                 content: {
                     outline: true,
                     header: {
-                        color: "green",
-                        content: [{ type: "title", content: "Radio coprocessor" }],
+                        color: "orange",
+                        content: [{ type: "title", content: "Tanmatsu radio firmware" }],
                         tools: [
                             {
                                 type: "link",
@@ -472,14 +515,33 @@ export class Recovery {
                                 target: "javascript:window.app.page.flashFirmware('radio/esphosted', true);",
                                 button: ["sm"],
                                 color: "orange",
-                                label: "Install WiFi/BLE firmware"
-                            },
+                                label: "Install"
+                            }
+                        ]
+                    },
+                    content: [
+                        {
+                            type: "paragraph",
+                            content: "To reinstall the radio firmware simply press the 'install' button."
+                        }
+                    ]
+                }
+            });
+
+            page.push({
+                type: "card",
+                content: {
+                    outline: true,
+                    header: {
+                        color: "green",
+                        content: [{ type: "title", content: "Meshtastic preview" }],
+                        tools: [
                             {
                                 type: "link",
                                 icon: "link",
                                 target: "javascript:window.app.page.flashFirmware('radio/meshtastic', true);",
                                 button: ["sm"],
-                                color: "green",
+                                color: "secondary",
                                 label: "Install Meshtastic radio"
                             },
                         ]
@@ -487,18 +549,41 @@ export class Recovery {
                     content: [
                         {
                             type: "paragraph",
-                            content: "You have successfully connected to the application processor (ESP32-P4) of your Tanmatsu device. You can now flash the launcher firmware or the Meshtastic frontend firmware (preview)."
+                            content: "As an alternative to the Tanmatsu launcher and its radio firmware you can install the Meshtastic radio firmware. Note that this also needs the Meshtastic frontend firmware to be installed on the flash of the ESP32-P4 application processor."
                         },
+                    ]
+                }
+            });
+
+            page.push({
+                type: "card",
+                content: {
+                    outline: true,
+                    header: {
+                        color: "secondary",
+                        content: [{ type: "title", content: "Tanmatsu radio firmware (legacy v0.0.12)" }],
+                        tools: [
+                            {
+                                type: "link",
+                                icon: "link",
+                                target: "javascript:window.app.page.flashFirmware('radio/esphosted-v0-0-12', true);",
+                                button: ["sm"],
+                                color: "secondary",
+                                label: "Install"
+                            }
+                        ]
+                    },
+                    content: [
                         {
                             type: "paragraph",
-                            content: "After flashing the device needs to be restarted. To restart the device first disconnect, then turn off the device by holding down the power button until it powers off. Then turn it back on by pressing the power button again."
-                        },
+                            content: "To reinstall the legacy v0.0.12 radio firmware simply press the 'install' button."
+                        }
                     ]
                 }
             });
         }
 
-        page.push({
+        /*page.push({
             type: "card",
             content: {
                 outline: true,
@@ -535,7 +620,7 @@ export class Recovery {
                     }
                 ]
             }
-        });
+        });*/
 
         return page;
     }
