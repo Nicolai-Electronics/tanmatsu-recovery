@@ -32,7 +32,7 @@ export class Recovery {
         this.transport = null;
         this.device = null;
         this.chip = null;
-        this.serialLib = (!navigator.serial && navigator.usb) ? serial : (navigator.serial ? navigator.serial : null);
+        this.serialLib = (typeof navigator.serial !== "undefined") ? navigator.serial : null;
         this.isConnecting = false;
         this.isErasing = false;
         this.instructions = null;

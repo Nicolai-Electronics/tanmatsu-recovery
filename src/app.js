@@ -32,7 +32,7 @@ class App {
         
         this.renderer.render_loading("Starting application...", "secondary", true);
 
-        if (typeof navigator.usb === "undefined") {
+        if (typeof navigator.serial === "undefined") {
             this.show_incompatible();
             return;
         }
@@ -67,7 +67,7 @@ class App {
             content: [
                 {
                     type: "paragraph",
-                    content: "This application is only compatible with browsers that support the WebUSB API. Unfortunately Firefox does not support these APIs."
+                    content: "This application is only compatible with browsers that support the WebSerial API."
                 },
             ],
         };
