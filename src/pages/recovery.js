@@ -37,6 +37,10 @@ export class Recovery {
         this.isErasing = false;
         this.instructions = null;
         this.lastError = null;
+        this.terminal = null;
+        this.terminalElement = null;
+        this.terminalEnabled = false;
+        this.terminalReading = false;
         this.render();
     }
 
@@ -53,6 +57,9 @@ export class Recovery {
     }
 
     async disconnect() {
+        await this.disableTerminal();
+        this.disposeTerminal();
+
         if (this.transport !== null) {
             await this.transport.disconnect();
             await this.transport.waitForUnlock(1500);
@@ -113,6 +120,138 @@ export class Recovery {
 
         this.isConnecting = false;
         this.render();
+    }
+
+    _sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    // Resets the device, either into the application (bootloader = false)
+    // or into the ROM bootloader / download mode (bootloader = true).
+    // The Tanmatsu's ESP32-P4 and ESP32-C6 both expose a native USB
+    // Serial/JTAG peripheral, which decides what to boot into based on the
+    // order and timing of RTS/DTR transitions rather than directly driving
+    // the EN/GPIO0 pins, so both sequences need to be followed precisely.
+    async resetDevice(bootloader) {
+        if (this.transport === null) {
+            return;
+        }
+
+        // The terminal reads the same serial stream the ROM/stub loader
+        // needs exclusive access to, so it must be stopped before talking
+        // to the bootloader and is only meaningful once the application
+        // is actually running again.
+        await this.disableTerminal();
+
+        if (bootloader) {
+            await this.transport.setRTS(false);
+            await this.transport.setDTR(false);
+            await this._sleep(100);
+            await this.transport.setDTR(true);
+            await this.transport.setRTS(false);
+            await this._sleep(100);
+            await this.transport.setRTS(true);
+            await this.transport.setDTR(false);
+            await this.transport.setRTS(true);
+            await this._sleep(100);
+            await this.transport.setRTS(false);
+            await this.transport.setDTR(false);
+        } else {
+            await this.transport.setDTR(false);
+            await this.transport.setRTS(true);
+            await this._sleep(200);
+            await this.transport.setRTS(false);
+            await this._sleep(200);
+            await this.enableTerminal();
+        }
+
+        this.render();
+    }
+
+    _ensureTerminal() {
+        if (this.terminal !== null) {
+            return;
+        }
+        this.terminalElement = document.createElement("div");
+        this.terminalElement.style.height = "400px";
+        this.terminal = new Terminal({
+            convertEol: true,
+            disableStdin: false,
+            fontSize: 14,
+            theme: {
+                background: "#1e1e1e"
+            }
+        });
+        this.terminal.open(this.terminalElement);
+        this.terminal.onData((data) => {
+            this._writeRaw(new TextEncoder().encode(data));
+        });
+    }
+
+    disposeTerminal() {
+        if (this.terminal !== null) {
+            this.terminal.dispose();
+        }
+        this.terminal = null;
+        this.terminalElement = null;
+        this.terminalEnabled = false;
+    }
+
+    async _writeRaw(bytes) {
+        if (this.device === null || !this.device.writable) {
+            return;
+        }
+        const writer = this.device.writable.getWriter();
+        try {
+            await writer.write(bytes);
+        } finally {
+            writer.releaseLock();
+        }
+    }
+
+    async enableTerminal() {
+        if (this.transport === null) {
+            return;
+        }
+        this._ensureTerminal();
+        this.terminalEnabled = true;
+        this._runTerminalReadLoop();
+    }
+
+    async disableTerminal() {
+        if (!this.terminalEnabled) {
+            return;
+        }
+        this.terminalEnabled = false;
+        if (this.transport !== null) {
+            try {
+                // Cancels the in-flight raw read (breaking the read loop
+                // below) and hands the transport a fresh reader so the
+                // ROM/stub loader can use the port again afterwards.
+                await this.transport.flushInput();
+            } catch (e) {
+                console.log("Failed to flush serial input", e.message);
+            }
+        }
+    }
+
+    async _runTerminalReadLoop() {
+        if (this.terminalReading || this.transport === null) {
+            return;
+        }
+        this.terminalReading = true;
+        try {
+            for await (const chunk of this.transport.rawRead()) {
+                if (!this.terminalEnabled) {
+                    break;
+                }
+                this.terminal.write(chunk);
+            }
+        } catch (e) {
+            console.log("Terminal read loop stopped", e.message);
+        } finally {
+            this.terminalReading = false;
+        }
     }
 
     async eraseFlash() {
@@ -348,6 +487,22 @@ export class Recovery {
                             {
                                 type: "link",
                                 icon: "link",
+                                target: "javascript:window.app.page.resetDevice(false);",
+                                button: ["sm"],
+                                color: "secondary",
+                                label: "Reset to application"
+                            },
+                            {
+                                type: "link",
+                                icon: "link",
+                                target: "javascript:window.app.page.resetDevice(true);",
+                                button: ["sm"],
+                                color: "secondary",
+                                label: "Reset to bootloader"
+                            },
+                            {
+                                type: "link",
+                                icon: "link",
                                 target: "javascript:window.app.page.disconnect();",
                                 button: ["sm"],
                                 color: "secondary",
@@ -372,6 +527,29 @@ export class Recovery {
                 }
             },
         ];
+
+        page.push({
+            type: "card",
+            content: {
+                outline: true,
+                header: {
+                    color: this.terminalEnabled ? "green" : "secondary",
+                    content: [{ type: "title", content: "Serial monitor" }]
+                },
+                content: this.terminalEnabled ? [
+                    {
+                        type: "wrapper",
+                        id: "xterm-terminal",
+                        content: []
+                    }
+                ] : [
+                    {
+                        type: "paragraph",
+                        content: "Reset the device to application mode using the 'Reset to application' button above to view its serial output here."
+                    }
+                ]
+            }
+        });
 
     page.push({
             type: "card",
@@ -583,7 +761,7 @@ export class Recovery {
             });
         }
 
-        /*page.push({
+        page.push({
             type: "card",
             content: {
                 outline: true,
@@ -620,7 +798,7 @@ export class Recovery {
                     }
                 ]
             }
-        });*/
+        });
 
         return page;
     }
@@ -663,6 +841,18 @@ export class Recovery {
         };
 
         this.app.renderer.render_content(content);
+
+        // render_content() replaces the content pane's innerHTML, which
+        // would otherwise tear down the live xterm instance, so the
+        // persistent terminal element is re-attached to its mount point
+        // after every render instead of being recreated.
+        if (this.terminalEnabled && this.terminalElement !== null) {
+            let container = document.getElementById("xterm-terminal");
+            if (container !== null) {
+                container.appendChild(this.terminalElement);
+                this.terminal.focus();
+            }
+        }
     }
 
     async showError(error) {
